@@ -1,48 +1,77 @@
 package com.danikula.videocache.sample;
 
+import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
+import android.support.annotation.NonNull;
+import android.support.annotation.Nullable;
 import android.support.v4.app.Fragment;
-import android.widget.ProgressBar;
+import android.view.LayoutInflater;
+import android.view.View;
+import android.view.ViewGroup;
+import android.widget.SeekBar;
 import android.widget.VideoView;
 
 import com.danikula.videocache.CacheListener;
 import com.danikula.videocache.HttpProxyCacheServer;
 
-import org.androidannotations.annotations.AfterViews;
-import org.androidannotations.annotations.EFragment;
-import org.androidannotations.annotations.FragmentArg;
-import org.androidannotations.annotations.InstanceState;
-import org.androidannotations.annotations.SeekBarTouchStop;
-import org.androidannotations.annotations.ViewById;
-
 import java.io.File;
 
-@EFragment(R.layout.fragment_video)
 public class GalleryVideoFragment extends Fragment implements CacheListener {
 
-    @FragmentArg String url;
+    String url;
 
-    @InstanceState int position;
-    @InstanceState boolean playerStarted;
+    int position;
+    boolean playerStarted;
 
-    @ViewById VideoView videoView;
-    @ViewById ProgressBar progressBar;
+    VideoView videoView;
+    SeekBar progressBar;
 
     private boolean visibleForUser;
 
     private final VideoProgressUpdater updater = new VideoProgressUpdater();
 
     public static Fragment build(String url) {
-        return GalleryVideoFragment_.builder()
-                .url(url)
-                .build();
+        GalleryVideoFragment videoFragment = new GalleryVideoFragment();
+        Bundle bundle = new Bundle();
+        bundle.putString("url", url);
+        videoFragment.setArguments(bundle);
+        return videoFragment;
     }
 
-    @AfterViews
-    void afterViewInjected() {
-        startProxy();
+    @Nullable
+    @Override
+    public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
+        View contentView = inflater.inflate(R.layout.fragment_video, container, false);
+        progressBar = contentView.findViewById(R.id.progressBar);
+        videoView = contentView.findViewById(R.id.videoView);
+        progressBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
+            @Override
+            public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
+                int videoPosition = videoView.getDuration() * progressBar.getProgress() / 100;
+                videoView.seekTo(videoPosition);
+            }
 
+            @Override
+            public void onStartTrackingTouch(SeekBar seekBar) {
+
+            }
+
+            @Override
+            public void onStopTrackingTouch(SeekBar seekBar) {
+
+            }
+        });
+        return contentView;
+    }
+
+    @Override
+    public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
+        super.onViewCreated(view, savedInstanceState);
+        if (getArguments() != null) {
+            url = getArguments().getString("url");
+        }
+        startProxy();
         if (visibleForUser) {
             startPlayer();
         }
@@ -103,12 +132,6 @@ public class GalleryVideoFragment extends Fragment implements CacheListener {
     private void updateVideoProgress() {
         int videoProgress = videoView.getCurrentPosition() * 100 / videoView.getDuration();
         progressBar.setProgress(videoProgress);
-    }
-
-    @SeekBarTouchStop(R.id.progressBar)
-    void seekVideo() {
-        int videoPosition = videoView.getDuration() * progressBar.getProgress() / 100;
-        videoView.seekTo(videoPosition);
     }
 
     private final class VideoProgressUpdater extends Handler {
